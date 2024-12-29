@@ -1,0 +1,154 @@
+
+import cv2 
+import numpy as np
+import tensorflow as tf
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']= 'True'
+from matplotlib import pyplot as plt
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Dropout
+from tensorflow.keras.metrics import Precision, Recall, BinaryAccuracy
+from tensorflow.keras.models import load_model
+
+data_dir = 'data' # Data Directory
+
+for image_class in os.listdir(data_dir): # list and check the images
+   for image in os.listdir(os.path.join(data_dir, image_class)):
+        image_path = os.path.join(data_dir, image_class, image)
+        print(image)
+
+
+tf.keras.utils.image_dataset_from_directory #Default Data set Library from keras
+   
+data = tf.keras.utils.image_dataset_from_directory('data',batch_size=5,image_size=(32,32),color_mode="grayscale") 
+# Keras Dataset API
+# Image size, batch size and color mode defined
+
+data_iterator = data.as_numpy_iterator() # Generate the Images as a numpy array per batch
+
+batch = data_iterator.next()  # Next array of batch
+
+print(len(batch)) # Batch tuples with [images,labels] 
+
+print(batch[0].shape)   # Gives the shape of the batch (no. of batch, image size and Channel)
+                        
+print(batch[1]) # Gives the shape labels (Random Images in form of 0 and 1)
+
+fig, a = plt.subplots(ncols=5, figsize=(20,20)) # Show random batch images
+for i, img in enumerate(batch[0][:5]):
+    a[i].imshow(img)
+    a[i].title.set_text(batch[1][i])
+
+data = data.map(lambda x,y: (x/255, y)) # Transformation of matrices values from [0 255] to [0 1]
+
+print(len(data)) # Number of batches
+
+# Batch Size allocation for Training, Validation and Testing Data
+train_size = int(len(data)*.7)
+val_size = int(len(data)*.2)+1
+test_size = int(len(data)*.1)+1
+print(train_size,val_size,test_size) 
+
+train = data.take(train_size) # Dataset operation methods to assign the Batches to respective arrays 
+val = data.skip(train_size).take(val_size)
+test = data.skip(train_size+val_size).take(test_size) 
+print(len(train),len(val),len(test))
+
+# Building a simple CNN 
+model = Sequential() 
+# First Convolution layer of 64 Filters, (3,3) kernel and unity stride with (32,32,1) image shape
+model.add(Conv2D(64, (3,3), 1, activation='relu', input_shape=(32,32,1))) 
+model.add(MaxPooling2D()) # Default kernel size of (2,2)
+model.add(Conv2D(128, (3,3), 1, activation='relu'))
+model.add(MaxPooling2D())
+model.add(Flatten()) # Converts into 3D or 2D to 1D vector
+model.add(Dense(256, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+
+# model compiler with default learning rate = 0.001
+model.compile('adam', loss=tf.losses.BinaryCrossentropy(), metrics=['accuracy'])
+
+
+model.summary() # Gives the dimensions for each of the CNN layers 
+
+logdir='logs' # logging the datas during Compilation 
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+
+#model fitting start with Epoch =10
+hist = model.fit(train, epochs=10, validation_data=val, callbacks=[tensorboard_callback])
+
+hist.history # history of our trained model
+
+fig = plt.figure() #plot for loss
+plt.plot(hist.history['loss'], color='teal', label='loss')
+plt.plot(hist.history['val_loss'], color='orange', label='val_loss')
+fig.suptitle('Loss', fontsize=20)
+plt.legend(loc="upper left")
+plt.show()
+
+fig = plt.figure() #plot for accuracy
+plt.plot(hist.history['accuracy'], color='teal', label='accuracy')
+plt.plot(hist.history['val_accuracy'], color='orange', label='val_accuracy')
+fig.suptitle('Accuracy', fontsize=20)
+plt.legend(loc="upper left")
+plt.show()
+
+#In built check functions in tf
+pre = Precision()
+re = Recall()
+acc = BinaryAccuracy()
+
+# Test Data Compared with the model to compute the mentioned test functions
+
+for batch in test.as_numpy_iterator(): # to test results with our test batches
+    x, y = batch               #x is the images and y labels ..
+    yhat = model.predict(x)
+    pre.update_state(y,yhat)  #update the matrix with results
+    re.update_state(y,yhat)
+    acc.update_state(y,yhat)
+
+print(f'Precision:{pre.result().numpy()},Recall:{re.result().numpy()},Accuracy:{acc.result().numpy()}') 
+
+model.save(os.path.join('models','signclassifier.h5')) # save the CNN model
+
+# Preprocessing of the Images to be Checked with trained model
+
+def grayscale(img):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return img
+
+def equalize(img):
+    img = cv2.equalizeHist(img)
+    return img
+
+def preprocessing(img):
+    img = grayscale(img)
+    img = equalize(img)
+    img = img / 255
+    return img
+
+imgo=cv2.imread('speed40.jpg')
+img = np.asarray(imgo)
+img=cv2.resize(imgo,(32,32),interpolation = cv2.INTER_AREA)
+img = preprocessing(img)
+plt.imshow(img)
+plt.show()
+
+img = img.reshape(1, 32, 32, 1)
+
+# creates a expanded dim array because the model requires pictures in batches
+print(np.expand_dims(img/255, 0)) 
+
+predictions = model.predict(img)
+
+# threshold of 50% set for prediction of two data labels
+print(predictions)
+if predictions > 0.5: 
+    print('Stop')
+else:
+    print('SpeedLimit 40')
+
+
+
+
+

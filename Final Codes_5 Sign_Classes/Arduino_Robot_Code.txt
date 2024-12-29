@@ -1,0 +1,250 @@
+#include <WiFi.h>
+
+const char* ssid     = "Guests";
+const char* password = "Welcome@NU";
+
+WiFiServer server(80);
+#define motor_1Pin_1 27 
+#define motor_1Pin_2 26 
+#define enable_1Pin 14
+#define motor_2Pin_1 25
+#define motor_2Pin_2 33 
+#define enable_2Pin 12
+
+#define motor_3Pin_1 23
+#define motor_3Pin_2 22 
+#define enable_3Pin 15
+#define motor_4Pin_1 19
+#define motor_4Pin_2 21 
+#define enable_4Pin 2
+
+#define pwm 20
+#define pwmleft 25
+#define pwm60 30
+#define pwm20 15
+
+void setup()
+{
+    Serial.begin(115200);
+    pinMode(motor_1Pin_1, OUTPUT);
+    pinMode(motor_1Pin_2, OUTPUT);
+    pinMode(enable_1Pin, OUTPUT);
+
+    pinMode(motor_2Pin_1, OUTPUT);
+    pinMode(motor_2Pin_2, OUTPUT);
+    pinMode(enable_2Pin, OUTPUT);
+
+    pinMode(motor_3Pin_1, OUTPUT);
+    pinMode(motor_3Pin_2, OUTPUT);
+    pinMode(enable_3Pin, OUTPUT);
+
+    pinMode(motor_4Pin_1, OUTPUT);
+    pinMode(motor_4Pin_2, OUTPUT);
+    pinMode(enable_4Pin, OUTPUT);      // set the LED pin mode
+    //digitalWrite(enable1Pin, HIGH);
+    //digitalWrite(enable2Pin, HIGH);
+    //digitalWrite(enable3Pin, HIGH);
+    //digitalWrite(enable4Pin, HIGH);
+
+    delay(10);
+
+    // We start by connecting to a WiFi network
+
+    Serial.println();
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println("");
+    Serial.println("WiFi connected.");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+    
+    server.begin();
+
+}
+int value = 0;
+
+void loop(){
+ WiFiClient client = server.available();   // listen for incoming clients
+
+  if (client) {                             // if you get a client,
+    Serial.println("New Client.");           // print a message out the serial 
+    
+    String currentLine = "";                // make a String to hold incoming data from the client
+    while (client.connected()) {            // loop while the client's connected
+      if (client.available()) {             // if there's bytes to read from the client,
+        char c = client.read();             // read a byte, then
+        Serial.write(c);                    // print it out the serial monitor
+        if (c == '\n') {                    // if the byte is a newline character
+
+          // if the current line is blank, you got two newline characters in a row.
+          // that's the end of the client HTTP request, so send a response:
+          if (currentLine.length() == 0) {
+            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+            // and a content-type so the client knows what's coming, then a blank line:
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-type:text/html");
+            client.println();
+
+            // the content of the HTTP response follows the header:
+            client.print("Click <a href=\"/G\">here</a> to turn the LED on pin 5 on.<br>");
+            client.print("Click <a href=\"/S\">here</a> to turn the LED on pin 5 off.<br>");
+            client.print("Click <a href=\"/R\">here</a> to turn the LED on pin 5 off.<br>");
+            client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
+            client.print("Click <a href=\"/A\">here</a> to turn the LED on pin 5 off.<br>");
+            client.print("Click <a href=\"/B\">here</a> to turn the LED on pin 5 off.<br>");
+
+            // The HTTP response ends with another blank line:
+            client.println();
+            // break out of the while loop:
+            break;
+          } else {    // if you got a newline, then clear currentLine:
+            currentLine = "";
+          }
+        } else if (c != '\r') {  // if you got anything else but a carriage return character,
+          currentLine += c;      // add it to the end of the currentLine
+        }
+
+        // Check to see if the client request was "GET /H" or "GET /L":
+        if (currentLine.endsWith("G")) {
+          forward();               // GET /G Forward
+        }
+        if (currentLine.endsWith("S")) {
+          stop();                // GET /S Stop 
+        }
+        if (currentLine.endsWith("R")) {
+          right();                // GET /R Right
+        }
+        if (currentLine.endsWith("L")) {
+          left();                // GET /L Left
+        }
+        if (currentLine.endsWith("A")) {
+          forward60();                // GET /L Speed60
+        }
+        if (currentLine.endsWith("B")) {
+          forward20();                // GET /L Speed20
+        }
+
+      }
+    }
+    // close the connection:
+    client.stop();
+    Serial.println("Client Disconnected.");
+  }
+}
+// Motor A
+
+
+// Setting PWM propertie
+void forward() {
+  // Move the DC motor forward at maximum speed
+  //Serial.println("Moving Forward");
+  digitalWrite(motor_1Pin_1, HIGH);
+  digitalWrite(motor_1Pin_2, LOW);
+  digitalWrite(motor_2Pin_1, HIGH);
+  digitalWrite(motor_2Pin_2, LOW);
+  analogWrite(enable_1Pin, pwm);
+  analogWrite(enable_2Pin, pwm);
+  digitalWrite(motor_3Pin_1, HIGH);
+  digitalWrite(motor_3Pin_2, LOW);
+  digitalWrite(motor_4Pin_1, HIGH);
+  digitalWrite(motor_4Pin_2, LOW);
+  analogWrite(enable_3Pin, pwm);
+  analogWrite(enable_4Pin, pwm);
+  
+  delay(100);}
+
+void forward60() {
+  // Move the DC motor forward at maximum speed
+  //Serial.println("Moving Forward");
+  digitalWrite(motor_1Pin_1, HIGH);
+  digitalWrite(motor_1Pin_2, LOW);
+  digitalWrite(motor_2Pin_1, HIGH);
+  digitalWrite(motor_2Pin_2, LOW);
+  analogWrite(enable_1Pin, pwm60);
+  analogWrite(enable_2Pin, pwm60);
+  digitalWrite(motor_3Pin_1, HIGH);
+  digitalWrite(motor_3Pin_2, LOW);
+  digitalWrite(motor_4Pin_1, HIGH);
+  digitalWrite(motor_4Pin_2, LOW);
+  analogWrite(enable_3Pin, pwm60);
+  analogWrite(enable_4Pin, pwm60);
+  
+  delay(100);}
+
+void forward20() {
+  // Move the DC motor forward at maximum speed
+  //Serial.println("Moving Forward");
+  digitalWrite(motor_1Pin_1, HIGH);
+  digitalWrite(motor_1Pin_2, LOW);
+  digitalWrite(motor_2Pin_1, HIGH);
+  digitalWrite(motor_2Pin_2, LOW);
+  analogWrite(enable_1Pin, pwm20);
+  analogWrite(enable_2Pin, pwm20);
+  digitalWrite(motor_3Pin_1, HIGH);
+  digitalWrite(motor_3Pin_2, LOW);
+  digitalWrite(motor_4Pin_1, HIGH);
+  digitalWrite(motor_4Pin_2, LOW);
+  analogWrite(enable_3Pin, pwm20);
+  analogWrite(enable_4Pin, pwm20);
+  
+  delay(100);}
+
+void stop() {
+  // Stop the DC motor
+  //Serial.println("Motor stopped");
+  digitalWrite(motor_1Pin_1, LOW);
+  digitalWrite(motor_1Pin_2, LOW);
+  digitalWrite(motor_2Pin_1, LOW);
+  digitalWrite(motor_2Pin_2, LOW);
+  digitalWrite(enable_1Pin, LOW);
+  digitalWrite(enable_2Pin, LOW);
+  digitalWrite(motor_3Pin_1, LOW);
+  digitalWrite(motor_3Pin_2, LOW);
+  digitalWrite(motor_4Pin_1, LOW);
+  digitalWrite(motor_4Pin_2, LOW);
+  digitalWrite(enable_3Pin, LOW);
+  digitalWrite(enable_4Pin, LOW);
+  delay(100);}
+
+void right() {
+  // Move DC motor backwards at maximum speed
+  //Serial.println("Moving RIGHT");
+  digitalWrite(motor_1Pin_1, LOW);
+  digitalWrite(motor_1Pin_2, HIGH);
+  digitalWrite(motor_2Pin_1, HIGH);
+  digitalWrite(motor_2Pin_2, LOW); 
+   analogWrite(enable_1Pin, pwmleft);
+  analogWrite(enable_2Pin, pwmleft);
+  digitalWrite(motor_3Pin_1, LOW);
+  digitalWrite(motor_3Pin_2, HIGH);
+  digitalWrite(motor_4Pin_1, HIGH);
+  digitalWrite(motor_4Pin_2, LOW);
+    analogWrite(enable_3Pin, pwmleft);
+    analogWrite(enable_4Pin, pwmleft);
+  delay(100);}
+
+void left() {
+  // Stop the DC motor
+  //Serial.println("Motor LEFT");
+   digitalWrite(motor_1Pin_1, HIGH);
+  digitalWrite(motor_1Pin_2, LOW);
+  digitalWrite(motor_2Pin_1, LOW);
+  digitalWrite(motor_2Pin_2, HIGH);
+    analogWrite(enable_1Pin, pwmleft);
+    analogWrite(enable_2Pin, pwmleft);
+  digitalWrite(motor_3Pin_1, HIGH);
+  digitalWrite(motor_3Pin_2, LOW);
+  digitalWrite(motor_4Pin_1, LOW);
+  digitalWrite(motor_4Pin_2, HIGH);
+    analogWrite(enable_3Pin, pwmleft);
+    analogWrite(enable_4Pin, pwmleft);
+  delay(100);}
